@@ -44,6 +44,8 @@ pin_base = machine.Pin(05, machine.Pin.OUT)
 
 
 def button():
+    """ button view for power switch activation via request and conditional
+    against "switch=yes" """
     body = """
 <head>
 <title>IoT PC Switch</title>
@@ -83,7 +85,9 @@ document.getElementById("sw").innerHTML = "---- ON ----";
 
 
 def switch():
-    """ activates transistor switch via NodeMCU and view for success page """
+    """ activates transistor switch via NodeMCU and serves up the success page.
+
+    """
     pin_collect.value(1)
     pin_base.value(1)
     sleep(3)
@@ -95,15 +99,24 @@ def switch():
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:,">
 <style>html{font-family: Helvetica; display:inline-block; margin: 0px auto; text-align: center;}
-h1{color: #0F3376; padding: 2vh;}p{font-size: 1.5rem;}
+h1{color: #008000; padding: 2vh;}p{font-size: 1.5rem;}
 </style>
 </head>
 <body>
 <h1>--- Success! ---</h1>
+<p>Redirecting in 3 seconds</p>
+<meta http-equiv="refresh" content="3; URL=/button" />
 </body>
 """
     return response_template % body
 
+
+# <script>
+# var timer = setTimeout(function() {
+# window.location.assign='192.168.0.34:8080/button'
+# }, 3000);
+# </script>
+#
 
 # handler dictionary
 handlers = {
@@ -134,12 +147,14 @@ def main():
         client_s = res[0]
         client_addr = res[1]
         req = client_s.recv(4096)
-        request = str(req)
-        print("Request:")
-        print(req)
+
+        # parse request to test for
+        request = str(req).split('/')[-1]
+        print("switch call criteria: " + request)
 
         try:
             path = req.decode().split("\r\n")[0].split(" ")[1]
+            print(path)
             handler = handlers[path.strip('/').split('/')[0]]
             response = handler()
             switch_yes = request.find('/switch=yes')
