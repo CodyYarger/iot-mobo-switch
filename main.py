@@ -2,10 +2,6 @@
 This module contains a MicroPython webserver for the NodeMCU microcontroller that
 interfaces a PC motherboard. The 'button' view can be accessed by the user to close
 a transistor switch, executing a forced shutdown or startup of a computer.
-
-Note: This is currently written for a test circuit with the switch completing
-an LED circuit. Updates will be made to power LED, as a feedback, when transistor
-switch provides continuety between the motherboard power switch pins.
 """
 # pylint: disable=E0001
 # pylint: disable=C0103
@@ -38,97 +34,114 @@ response_template = """HTTP/1.0 200 OK
 """
 
 
-# pin objects for transistor collector and base
-pin_collect = machine.Pin(09, machine.Pin.OUT)
-pin_base = machine.Pin(05, machine.Pin.OUT)
-
-
 def button():
-    """ button view for power switch activation via request and conditional
-    against "switch=yes" """
+    """ button view for power switch activation via request """
     body = """
 <head>
 <title>IoT PC Switch</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="icon" href="data:,">
-<style>html{font-family: Helvetica; display:inline-block; margin: 0px auto; text-align: center;}
-h1{color: #0F3376; padding: 2vh;}p{font-size: 1.5rem;}.button{width: 300px; display: inline-block; background-color: #A9A9A9; border: none;
-border-radius: 4px; color: red; padding: 16px 40px; text-decoration: none; font-size: 30px; margin: 2px; cursor: pointer;}.full {
- display: block; width: 100%;}
+<style>
+html{font-family: Helvetica; display:inline-block; margin: 0px auto; text-align: center;}
+h1{color: #0F3376; padding: 2vh;}p {font-size: 1.5rem;}
+.button{width: 400px; display: inline-block; background-color: #A9A9A9; border: none;border-radius: 4px;
+padding: 16px 40px; text-decoration: none; font-size: 30px; margin: 2px; cursor: pointer;}
 </style>
 </head>
-
 <body>
+
 <h1>IoT Motherboard Switch</h1>
 
-<p>Click to turn switch ON to Force-Shutdown or Startup PC</strong></p>
 <p>
-<a href="/switch=yes">
-<button id = "sw" onclick= "color();label()" class="button">---- OFF ----</button>
+<a href="/power=on">
+<button id = "pwr" onclick= "color();label()" class="button">---- STARTUP ----</button>
 </a>
 </p>
-<script>
-function color() {
-document.getElementById("sw").style.color = "green";
-}
 
-function label() {
-document.getElementById("sw").innerHTML = "---- ON ----";
-}
+<script>
+function label() {document.getElementById("pwr").innerHTML = "---- POWERING ON ----";}
 </script>
 
+<p>
+<a href="/power=off">
+<button id = "pwroff" onclick= "color();label1()" class="button">--- SHUTDOWN ---</button>
 </a>
 </p>
+
+<script>
+function label1() {document.getElementById("pwroff").innerHTML = "---- POWERING OFF ----";}
+</script>
 </body>
 """
     return response_template % body
 
 
-def switch():
-    """ activates transistor switch via NodeMCU and serves up the success page.
+# pin objects for transistor collector and base
+pin_D1_base = machine.Pin(05, machine.Pin.OUT)
+# pin_SD2 = machine.Pin(09, machine.Pin.OUT)
 
+
+def power_on():
     """
-    pin_collect.value(1)
-    pin_base.value(1)
-    sleep(3)
-    pin_base.value(0)
+    activates transistor switch with 1 second delay for startup.
+    serves up success page and then redirects back to button view.
+    """
+    pin_D1_base.value(1)
+    sleep(1)
+    pin_D1_base.value(0)
 
     body = """
-<head>
-<title>Success</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="icon" href="data:,">
-<style>html{font-family: Helvetica; display:inline-block; margin: 0px auto; text-align: center;}
-h1{color: #008000; padding: 2vh;}p{font-size: 1.5rem;}
-</style>
-</head>
-<body>
-<h1>--- Success! ---</h1>
-<p>Redirecting in 3 seconds</p>
-<meta http-equiv="refresh" content="3; URL=/button" />
-</body>
-"""
+    <head>
+    <title>-- Powered On --</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>html{font-family: Helvetica; display:inline-block; margin: 0px auto; text-align: center;}
+    h1{color: #008000; padding: 2vh;}p{font-size: 1.5rem;}
+    </style>
+    </head>
+    <body>
+    <h1>--- PC Powered On! ---</h1>
+    <meta http-equiv="refresh" content="1; URL=/button" />
+    </body>
+    """
     return response_template % body
 
 
-# <script>
-# var timer = setTimeout(function() {
-# window.location.assign='192.168.0.34:8080/button'
-# }, 3000);
-# </script>
-#
+def power_off():
+    """
+    activates transistor switch with 5 second delay to force shutdown pc,
+    serves up success page and then redirects back to button view.
+    """
+    pin_D1_base.value(1)
+    sleep(5)
+    pin_D1_base.value(0)
+
+    body = """
+    <head>
+    <title>-- Powered Off --</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>html{font-family: Helvetica; display:inline-block; margin: 0px auto; text-align: center;}
+    h1{color: #008000; padding: 2vh;}p{font-size: 1.5rem;}
+    </style>
+    </head>
+    <body>
+    <h1>--- PC Powered Off! ---</h1>
+    <meta http-equiv="refresh" content="1; URL=/button" />
+    </body>
+    """
+    return response_template % body
+
 
 # handler dictionary
 handlers = {
     'button': button,
-    'switch=yes': switch
+    'power=on': power_on,
+    'power=off': power_off,
 }
 
 
 def main():
     """ micropython web server """
 
-    # define server socket and listen for connections
+    #  server socket and listen for connections
     s = socket.socket()
 
     # bind to all interfaces
@@ -148,18 +161,23 @@ def main():
         client_addr = res[1]
         req = client_s.recv(4096)
 
-        # parse request to test for
+        # parse request for downstream condition on pwr_on and pwr_off
         request = str(req).split('/')[-1]
         print("switch call criteria: " + request)
 
         try:
             path = req.decode().split("\r\n")[0].split(" ")[1]
-            print(path)
             handler = handlers[path.strip('/').split('/')[0]]
             response = handler()
-            switch_yes = request.find('/switch=yes')
-            if switch_yes >= 0:
-                switch()
+            pwr_on = request.find('/power=on')
+            pwr_off = request.find('/power=off')
+
+            if pwr_on >= 0:
+                power_on()
+                response = handler()
+
+            elif pwr_off >= 0:
+                power_off()
                 response = handler()
 
         except KeyError:
