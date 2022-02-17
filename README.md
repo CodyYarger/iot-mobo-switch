@@ -4,11 +4,11 @@ hosting a socket web server.
 
 ## Motivation
 The IoT motherboard power switch was motivated by the need for capability to remotely
-force-shutdown/startup a GPU mining-rig for situations where the system becomes unstable
-and unresponsive and the user is offsite.
+force-shutdown/startup a headless server for situations where the system becomes unstable
+and unresponsive and the user is offsite. The switch can serve any motherboard power terminals.
 
 ## Usage
-A user with access to a mining-rig/computer/servers respective local network can activate the switch
+A user with access to a computer/servers respective local network can activate the switch
 by making a request to the socket web-server by visiting the button path and making a request via the OFF/ON button. 
 
 ## Installation
